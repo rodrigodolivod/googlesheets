@@ -1,0 +1,150 @@
+function AgruparEFiltrarLinhas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ws = ss.getSheetByName("Novas Demandas");
+  
+  var wsExcluidos = ss.getSheetByName("Excluídos");
+  if (!wsExcluidos) {
+    wsExcluidos = ss.insertSheet("Excluídos", ss.getNumSheets());
+    wsExcluidos.appendRow(ws.getRange("2:2").getValues()[0]);
+  } else {
+    wsExcluidos.getRange("2:" + wsExcluidos.getLastRow()).clear(); // Limpa apenas as linhas de dados, mantendo o cabeçalho
+  }
+  
+  var lastRow = ws.getLastRow();
+  var lastColumn = ws.getLastColumn();
+  var dict = {};
+  var newRow = 5; // Linha onde será colocada a próxima linha não duplicada
+  
+  for (var i = 5; i <= lastRow; i++) { // Começa na linha 5 na planilha "Novas Demandas"
+    var key = ws.getRange(i, 2).getValue() + "|" + ws.getRange(i, 5).getValue() + "|" + ws.getRange(i, 7).getValue();
+    
+    if (dict[key] === undefined) {
+      dict[key] = i;
+      if (newRow !== i) {
+        ws.getRange(newRow, 1, 1, lastColumn).setValues(ws.getRange(i, 1, 1, lastColumn).getValues());
+        ws.getRange(i, 1, 1, lastColumn).clearContent();
+      }
+      newRow++;
+    } else {
+      wsExcluidos.appendRow(ws.getRange(i, 1, 1, lastColumn).getValues()[0]);
+      ws.getRange(i, 1, 1, lastColumn).clearContent();
+    }
+  }
+  
+  SpreadsheetApp.getUi().alert("Filtro realizado em todas as novas demandas!\nExcelente dia pra quem merece!");
+}
+function LimparDados() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsNovasDemandas = ss.getSheetByName("Novas Demandas");
+  var wsExcluidos = ss.getSheetByName("Excluídos");
+  
+  if (wsNovasDemandas) {
+    var lastRowNovasDemandas = wsNovasDemandas.getLastRow();
+    if (lastRowNovasDemandas >= 5) {
+      var rangeNovasDemandas = wsNovasDemandas.getRange("5:" + lastRowNovasDemandas);
+      rangeNovasDemandas.clearContent();
+    }
+  }
+  
+  if (wsExcluidos) {
+    var lastRowExcluidos = wsExcluidos.getLastRow();
+    if (lastRowExcluidos >= 2) { // Certifique-se de que a última linha é >= 3
+      var rangeExcluidos = wsExcluidos.getRange("3:" + lastRowExcluidos);
+      rangeExcluidos.clearContent();
+    }
+  }
+  
+  SpreadsheetApp.getUi().alert("Limpeza de dados concluída!");
+}
+function AtualizarAnalistas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var wsDemandas = ss.getSheetByName("Novas Demandas");
+  var wsProdutos = ss.getSheetByName("Produtos");
+  
+  var lastRowDemandas = wsDemandas.getLastRow();
+  var lastRowProdutos = wsProdutos.getLastRow();
+  
+  // Definindo o intervalo de pesquisa na planilha "Produtos"
+  var lookupRange = wsProdutos.getRange("C2:J" + lastRowProdutos);
+  var lookupValues = lookupRange.getValues();
+  
+  // Loop para realizar o PROCV e atualizar a coluna Y (ANALISTA)
+  for (var i = 5; i <= lastRowDemandas; i++) {
+    var lookupValue = wsDemandas.getRange(i, 9).getValue(); // Coluna I (9 em A1)
+    var found = false;
+    
+    // Procurar o valor na coluna C da planilha "Produtos"
+    for (var j = 0; j < lookupValues.length; j++) {
+      if (lookupValues[j][0] == lookupValue) { // Coluna C (0 em JavaScript, C2 em A1)
+        wsDemandas.getRange(i, 25).setValue(lookupValues[j][7]); // Coluna Y (25 em A1), coluna J em JavaScript (7 em 0-indexed)
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      wsDemandas.getRange(i, 25).setValue("Código não encontrado");
+    }
+  }
+  
+  // Mostrar mensagem
+  SpreadsheetApp.getUi().alert("Analistas atualizados!");
+}
+
+function copiarEColarDados() {
+  var sourceSpreadsheetId = "1x8ok0RyuU_3uk495eZriWp697jROPxVPbE5XMFM0dp8";
+  var sourceSheetName = "Colagem";
+  var destinationSpreadsheetId = "1h01__wGcdM3pc9q38j4Nvm92HTkGT9zFBCGPZR9KngU";
+  var destinationSheetName = "CONTROLE SC";
+
+  try {
+    // Abre a planilha de origem e a planilha de destino
+    var sourceSpreadsheet = SpreadsheetApp.openById(sourceSpreadsheetId);
+    if (!sourceSpreadsheet) {
+      throw new Error("Não foi possível abrir a planilha de origem com o ID fornecido.");
+    }
+    var sourceSheet = sourceSpreadsheet.getSheetByName(sourceSheetName);
+    if (!sourceSheet) {
+      throw new Error("Não foi possível encontrar a aba 'Colagem' na planilha de origem.");
+    }
+    
+    var destinationSpreadsheet = SpreadsheetApp.openById(destinationSpreadsheetId);
+    if (!destinationSpreadsheet) {
+      throw new Error("Não foi possível abrir a planilha de destino com o ID fornecido.");
+    }
+    var destinationSheet = destinationSpreadsheet.getSheetByName(destinationSheetName);
+    if (!destinationSheet) {
+      throw new Error("Não foi possível encontrar a aba 'CONTROLE SC' na planilha de destino.");
+    }
+
+    // Copia os dados da planilha de origem (a partir da segunda linha)
+    var sourceDataRange = sourceSheet.getRange(2, 1, sourceSheet.getLastRow() - 1, sourceSheet.getLastColumn());
+    var sourceData = sourceDataRange.getValues();
+    
+    // Verifica a última linha não vazia na planilha de destino
+    var lastRow = destinationSheet.getLastRow();
+    var lastRowData = destinationSheet.getRange(lastRow, 1, 1, destinationSheet.getLastColumn()).getValues();
+    
+    // Verifica se a última linha está realmente preenchida
+    while (lastRow > 0 && lastRowData[0].join('') === '') {
+      lastRow--;
+      lastRowData = destinationSheet.getRange(lastRow, 1, 1, destinationSheet.getLastColumn()).getValues();
+    }
+    lastRow++; // Move para a próxima linha após a última linha com dados
+
+    var numRows = sourceData.length;
+
+    // Adiciona linhas se necessário
+    if (destinationSheet.getMaxRows() < lastRow + numRows) {
+      destinationSheet.insertRowsAfter(destinationSheet.getMaxRows(), lastRow + numRows - destinationSheet.getMaxRows());
+    }
+
+    // Cola os dados na planilha de destino, apenas valores
+    var destinationRange = destinationSheet.getRange(lastRow, 1, numRows, sourceData[0].length);
+    destinationRange.setValues(sourceData);
+
+    Logger.log("Dados copiados e colados com sucesso.");
+  } catch (e) {
+    Logger.log("Erro: " + e.message);
+  }
+}
